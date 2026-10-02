@@ -11,9 +11,9 @@
 int main() {
     try {
         gfx::GlfwContext glfw;
-        gfx::Window window({.width = 800, .height = 600, .title = "OpenGL"});
+        gfx::Window window({.width = 800, .height = 600, .title = "Villacastin OpenGL"});
 
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.54f, 0.7f, 0.32f, 1.0f);
 
         while (!window.shouldClose()) {
             gfx::processInput(window);
