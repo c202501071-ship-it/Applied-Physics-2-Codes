@@ -23,6 +23,7 @@ constexpr float kPointRadius = 0.03f;
 constexpr float kRestitution = 0.4f;
 constexpr float kGravity = -1.8f;
 constexpr float kStiffness = 400.0f;
+constexpr float kDamping = 4.0f;
 
 struct PointMass {
     float posX, posY;
@@ -137,7 +138,8 @@ void applySpringForce(vector<PointMass>& points, const Spring& spring, float del
 
     Vec2 dir = {(b.posX - a.posX) / dist, (b.posY - a.posY) / dist};
     float stretch = dist - spring.restLength;
-    float forceMagnitude = kStiffness * stretch;
+    float relVelAlongDir = (b.velX - a.velX) * dir.x + (b.velY - a.velY) * dir.y;
+    float forceMagnitude = kStiffness * stretch + kDamping * relVelAlongDir;
 
     float forceX = dir.x * forceMagnitude;
     float forceY = dir.y * forceMagnitude;
