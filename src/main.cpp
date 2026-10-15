@@ -20,20 +20,11 @@ namespace {
 constexpr int kCircleSegments = 40;
 constexpr float kPi = 3.14159265358979323846f;
 constexpr float kPointRadius = 0.03f;
-constexpr float kRestitution = 0.4f;
 constexpr float kGravity = -1.8f;
-constexpr float kStiffness = 400.0f;
-constexpr float kDamping = 4.0f;
+constexpr float kDt = 1.0f / 60.0f;
 
-struct PointMass {
-    float posX, posY;
-    float velX, velY;
-    float mass;
-};
-
-struct Spring {
-    int a, b;
-    float restLength;
+struct Point {
+    float posX, posY, prevX, prevY;
 };
 
 struct Vec2 {
@@ -93,7 +84,7 @@ vector<float> generateCircleVertices(float radius, int segments) {
     vector<float> vertices;
     vertices.push_back(0.0f);
     vertices.push_back(0.0f);
-
+    
     for (int i = 0; i <= segments; ++i) {
         float angle = (float)i/segments * 2.0f * kPi;
         vertices.push_back(radius * cosf(angle));
@@ -123,59 +114,12 @@ void uploadDynamic(GLuint vbo, const vector<float>& data) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-float distance(const PointMass& a, const PointMass& b) {
-    float dx = b.posX - a.posX;
-    float dy = b.posY - a.posY;
-    return sqrtf(dx * dx + dy * dy);
-}
-
-void applySpringForce(vector<PointMass>& points, const Spring& spring, float deltaTime) {
-    PointMass& a = points[spring.a];
-    PointMass& b = points[spring.b];
-
-    float dist = distance(a, b);
-    if (dist < 1e-6f) return;
-
-    Vec2 dir = {(b.posX - a.posX) / dist, (b.posY - a.posY) / dist};
-    float stretch = dist - spring.restLength;
-    float relVelAlongDir = (b.velX - a.velX) * dir.x + (b.velY - a.velY) * dir.y;
-    float forceMagnitude = kStiffness * stretch + kDamping * relVelAlongDir;
-
-    float forceX = dir.x * forceMagnitude;
-    float forceY = dir.y * forceMagnitude;
-
-    a.velX += forceX / a.mass * deltaTime;
-    a.velY += forceY / a.mass * deltaTime;
-    b.velX -= forceX / b.mass * deltaTime;
-    b.velY -= forceY / b.mass * deltaTime;
-}
-
-void applyGravity(PointMass& point, float deltaTime) {
-    point.velY += kGravity * deltaTime;
-}
-
-void updatePoint(PointMass& point, float deltaTime) {
-    point.posX += point.velX * deltaTime;
-    point.posY += point.velY * deltaTime;
-}
-
-void resolveWallCollision(PointMass& point) {
-    if (point.posX - kPointRadius < -1.0f) {
-        point.posX = -1.0f + kPointRadius;
-        point.velX = -point.velX;
-    }
-    if (point.posX + kPointRadius > 1.0f) {
-        point.posX = 1.0f - kPointRadius;
-        point.velX = -point.velX;
-    }
-    if (point.posY - kPointRadius < -1.0f) {
-        point.posY = -1.0f + kPointRadius;
-        point.velY = -point.velY * kRestitution;
-    }
-    if (point.posY + kPointRadius > 1.0f) {
-        point.posY = 1.0f - kPointRadius;
-        point.velY = -point.velY;
-    }
+void updatePoint(Point& point, float dt) {
+    float oldX = point.posX, oldY = point.posY;
+    point.posX += point.posX - point.prevX;
+    point.posY += point.posY - point.prevY + kGravity * dt * dt;
+    point.prevX = oldX;
+    point.prevY = oldY;
 }
 
 } // namespace
@@ -191,62 +135,24 @@ int main() {
         GLuint circleVbo = 0;
         GLuint circleVao = createDynamicVao(circleVbo);
         GLsizei circleVertexCount = static_cast<GLsizei>(circleVerts.size() / 2);
-        GLuint lineVbo = 0;
-        GLuint lineVao = createDynamicVao(lineVbo);
 
-        vector<PointMass> points = {
-            {-0.2621f, 0.7063f, 0.0f, 0.0f, 1.0f},
-            {0.1063f, 0.8621f, 0.0f, 0.0f, 1.0f},
-            {0.2621f, 0.4937f, 0.0f, 0.0f, 1.0f},
-            {-0.1063f, 0.3379f, 0.0f, 0.0f, 1.0f},
-        };
-
-        vector<Spring> springs = {
-            {0, 1, distance(points[0], points[1])},
-            {1, 2, distance(points[1], points[2])},
-            {2, 3, distance(points[2], points[3])},
-            {3, 0, distance(points[3], points[0])},
-        };
+        vector<Point> points = {{0.0f, 0.8f, 0.0f, 0.8f}};
 
         glClearColor(0.0f, 0.396f, 0.549f, 1.0f);
 
-        float lastFrameTime = static_cast<float>(glfwGetTime());
-
         while (!window.shouldClose()) {
-            float currentFrameTime = static_cast<float>(glfwGetTime());
-            float deltaTime = currentFrameTime - lastFrameTime;
-            lastFrameTime = currentFrameTime;
-
             gfx::processInput(window);
 
-            for (const Spring& spring : springs) {
-                applySpringForce(points, spring, deltaTime);
-            }
-
-            for (PointMass& point : points) {
-                applyGravity(point, deltaTime);
-                updatePoint(point, deltaTime);
-                resolveWallCollision(point);
+            for (Point& point : points) {
+                updatePoint(point, kDt);
             }
 
             glClear(GL_COLOR_BUFFER_BIT);
             glUseProgram(program);
 
-            vector<float> lineVerts;
-            for (const Spring& spring : springs) {
-                lineVerts.push_back(points[spring.a].posX);
-                lineVerts.push_back(points[spring.a].posY);
-                lineVerts.push_back(points[spring.b].posX);
-                lineVerts.push_back(points[spring.b].posY);
-            }
-            uploadDynamic(lineVbo, lineVerts);
-            glUniform4f(colorLoc, 0.31f, 0.76f, 0.97f, 1.0f);
-            glBindVertexArray(lineVao);
-            glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(lineVerts.size() / 2));
-
             glUniform4f(colorLoc, 0.85f, 0.85f, 0.9f, 1.0f);
             glBindVertexArray(circleVao);
-            for (const PointMass& point : points) {
+            for (const Point& point : points) {
                 vector<float> translated = circleVerts;
                 for (size_t i = 0; i < translated.size(); i += 2) {
                     translated[i] += point.posX;
@@ -262,8 +168,6 @@ int main() {
 
         glDeleteVertexArrays(1, &circleVao);
         glDeleteBuffers(1, &circleVbo);
-        glDeleteVertexArrays(1, &lineVao);
-        glDeleteBuffers(1, &lineVbo);
         glDeleteProgram(program);
     } catch (const exception& e) {
         cerr << e.what() << '\n';
