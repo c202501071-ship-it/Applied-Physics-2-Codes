@@ -159,6 +159,12 @@ void applyStick(std::vector<Point>& points, const Stick& stick) {
 void resolveFloor(Point& point) {
     if (point.posY - kPointRadius < -1.0f)
         point.posY = -1.0f + kPointRadius;
+    if (point.posY - kPointRadius > 1.0f)
+        point.posY = 1.0f - kPointRadius;
+    if (point.posX - kPointRadius < -1.0f)
+        point.posX = -1.0f + kPointRadius;
+    if (point.posX - kPointRadius > 1.0f)
+        point.posX = 1.0f - kPointRadius;
 }
 
 Point* nearestPoint(std::vector<Point>& points, float x, float y) {
