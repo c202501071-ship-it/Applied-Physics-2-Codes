@@ -27,6 +27,8 @@ public:
     void swapBuffers();
     void pollEvents();
     bool isKeyPressed(int key) const;
+    bool isMouseButtonPressed(int button) const;
+    void getCursorPosition(double& x, double& y) const;
 
 private:
     struct Deleter {

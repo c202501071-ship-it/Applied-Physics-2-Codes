@@ -67,4 +67,12 @@ bool Window::isKeyPressed(int key) const {
     return glfwGetKey(handle_.get(), key) == GLFW_PRESS;
 }
 
+bool Window::isMouseButtonPressed(int button) const {
+    return glfwGetMouseButton(handle_.get(), button) == GLFW_PRESS;
+}
+
+void Window::getCursorPosition(double& x, double& y) const {
+    glfwGetCursorPos(handle_.get(), &x, &y);
+}
+
 }  // namespace gfx
