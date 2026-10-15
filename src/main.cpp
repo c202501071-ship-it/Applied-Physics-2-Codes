@@ -1,4 +1,5 @@
 #include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 #include <cstdlib>
 #include <exception>
@@ -120,6 +121,11 @@ void drawBall(GLuint program, const CircleMesh& mesh, const Ball& ball) {
     glDrawArrays(GL_TRIANGLE_FAN, 0, mesh.vertexCount);
 }
 
+void updateBall(Ball& ball, float deltaTime) {
+    ball.posX += ball.velX * deltaTime;
+    ball.posY += ball.velY * deltaTime;
+}
+
 } // namespace
 
 int main() {
@@ -129,13 +135,19 @@ int main() {
 
         GLuint program = createProgram(kVertexShaderSource, kFragmentShaderSource);
         CircleMesh mesh = createCircleMesh(generateCircleVertices(kBallRadius, kCircleSegments));
-        Ball ball = {0.0f, 0.0f, 0.0f, 0.0f, kBallRadius};
+        Ball ball = {0.0f, 0.0f, 0.6f, 0.4f, kBallRadius};
 
         glClearColor(0.04f, 0.42f, 0.24f, 1.0f);
 
+        float lastFrameTime = static_cast<float>(glfwGetTime());
+
         while (!window.shouldClose()) {
+            float currentFrameTime = static_cast<float>(glfwGetTime());
+            float deltaTime = currentFrameTime - lastFrameTime;
+            lastFrameTime = currentFrameTime;
             gfx::processInput(window);
 
+            updateBall(ball, deltaTime);
             glClear(GL_COLOR_BUFFER_BIT);
             drawBall(program, mesh, ball);
 
