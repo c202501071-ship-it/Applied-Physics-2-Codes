@@ -26,6 +26,7 @@ struct Ball {
     float posX, posY;
     float velX, velY;
     float radius;
+    float restitution;
 };
 
 constexpr const char* kVertexShaderSource = R"(#version 330 core
@@ -142,7 +143,7 @@ void resolveWallCollision(Ball& ball) {
     }
     if (ball.posY - ball.radius < -1.0f) {
         ball.posY = -1.0f + ball.radius;
-        ball.velY = -ball.velY;
+        ball.velY = -ball.velY * ball.restitution;
     }
     if (ball.posY + ball.radius > 1.0f) {
         ball.posY = 1.0f - ball.radius;
@@ -165,7 +166,7 @@ int main() {
         balls.reserve(numBalls);
 
         for (size_t i = 0; i < numBalls; ++i) {
-            balls.push_back({-0.5f, 0.3f, 0.6f, 0.4f, kBallRadius});
+            balls.push_back({-0.5f, 0.3f, 0.6f, 0.4f, kBallRadius, 0.75f});
         }
 
         glClearColor(0.0f, 0.396f, 0.549f, 1.0f);
