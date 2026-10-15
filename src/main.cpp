@@ -127,6 +127,10 @@ float distance(const Point& a, const Point& b) {
     return sqrtf(dx * dx + dy * dy);
 }
 
+Point makePoint(float x, float y) {
+    return {x, y, x, y, false};
+}
+
 void updatePoint(Point& point, float dt) {
     if (point.pinned) return;
     float oldX = point.posX, oldY = point.posY;
@@ -167,25 +171,24 @@ int main() {
         GLuint lineVbo = 0;
         GLuint lineVao = createDynamicVao(lineVbo);
 
+        // 0 head  1 neck  2 hip
+        // 3 elbowL  4 handL  5 elbowR  6 handR
+        // 7 kneeL  8 footL  9 kneeR  10 footR
         vector<Point> points = {
-            {-0.35f, 0.8f, -0.35f, 0.8f},
-            {-0.25f, 0.8f, -0.25f, 0.8f},
-            {-0.15f, 0.8f, -0.15f, 0.8f},
-            {-0.05f, 0.8f, -0.05f, 0.8f},
-            {0.05f, 0.8f, 0.05f, 0.8f},
-            {0.15f, 0.8f, 0.15f, 0.8f},
-            {0.25f, 0.8f, 0.25f, 0.8f},
-            {0.35f, 0.8f, 0.35f, 0.8f},
+            makePoint( 0.00f,  0.80f), makePoint( 0.00f,  0.65f),
+            makePoint( 0.00f,  0.25f), makePoint(-0.12f,  0.50f),
+            makePoint(-0.20f,  0.35f), makePoint( 0.12f,  0.50f),
+            makePoint( 0.20f,  0.35f), makePoint(-0.07f,  0.05f),
+            makePoint(-0.10f, -0.15f), makePoint( 0.07f,  0.05f),
+            makePoint( 0.10f, -0.15f),
         };
 
         std::vector<Stick> sticks = {
-            {0, 1, distance(points[0], points[1])},
-            {1, 2, distance(points[1], points[2])},
-            {2, 3, distance(points[2], points[3])},
-            {3, 4, distance(points[3], points[4])},
-            {4, 5, distance(points[4], points[5])},
-            {5, 6, distance(points[5], points[6])},
-            {6, 7, distance(points[6], points[7])},
+            {0, 1, distance(points[0], points[1])}, {1, 2, distance(points[1], points[2])},
+            {1, 3, distance(points[1], points[3])}, {3, 4, distance(points[3], points[4])},
+            {1, 5, distance(points[1], points[5])}, {5, 6, distance(points[5], points[6])},
+            {2, 7, distance(points[2], points[7])}, {7, 8, distance(points[7], points[8])},
+            {2, 9, distance(points[2], points[9])}, {9, 10, distance(points[9], points[10])},
         };
 
         points[0].pinned = true;
