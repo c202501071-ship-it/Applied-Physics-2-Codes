@@ -8,7 +8,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <random>
 
 #include "core/glfw_context.h"
 #include "core/input.h"
@@ -26,10 +25,6 @@ struct Ball {
     float posX, posY;
     float velX, velY;
     float radius;
-};
-
-struct Vec2 {
-    float x, y;
 };
 
 constexpr const char* kVertexShaderSource = R"(#version 330 core
@@ -150,57 +145,9 @@ void resolveWallCollision(Ball& ball) {
     }
 }
 
-bool checkBallCollision(const Ball&a, const Ball& b) {
-    float dx = b.posX - a.posX;
-    float dy = b.posY - a.posY;
-    float distance = sqrt(dx * dx + dy * dy);
-    return distance < (a.radius + b.radius);
-}
-
-Vec2 computeCollisionNormal(const Ball& a, const Ball& b, float& outDistance) {
-    float dx = b.posX - a.posX;
-    float dy = b.posY - a.posY;
-    outDistance = sqrt(dx * dx + dy * dy);
-    return { dx / outDistance, dy / outDistance };
-}
-
-void exchangeNormalVelocity(Ball& a, Ball& b, const Vec2& normal) {
-    float dotA = a.velX * normal.x + a.velY * normal.y;
-    float dotB = b.velX * normal.x + b.velY * normal.y;
-
-    a.velX += (dotB - dotA) * normal.x;
-    a.velY += (dotB - dotA) * normal.y;
-    b.velX += (dotA - dotB) * normal.x;
-    b.velY += (dotA - dotB) * normal.y;
-}
-
-void correctPenetration(Ball& a, Ball& b, const Vec2& normal, float distance) {
-    float overlap = (a.radius + b.radius) - distance;
-    float pushEach = overlap / 2.0f;
-
-    a.posX -= normal.x * pushEach;
-    a.posY -= normal.y * pushEach;
-    b.posX += normal.x * pushEach;
-    b.posY += normal.y * pushEach;
-}
-
-void resolveBallCollision(Ball& a, Ball& b) {
-    float distance;
-    Vec2 normal = computeCollisionNormal(a, b, distance);
-
-    exchangeNormalVelocity(a, b, normal);
-    correctPenetration(a, b, normal, distance);
-}
-
 } // namespace
 
 int main() {
-    random_device rd;
-    mt19937 gen(rd());
-
-    uniform_real_distribution<float> posDist(-1.0f, 1.0f);
-    uniform_real_distribution<float> velDist(-1.0f, 1.0f);
-
     try {
         gfx::GlfwContext glfw;
         gfx::Window window({.width = 600, .height = 600, .title = "Billiards Sim"});
@@ -208,12 +155,12 @@ int main() {
         GLuint program = createProgram(kVertexShaderSource, kFragmentShaderSource);
         CircleMesh mesh = createCircleMesh(generateCircleVertices(kBallRadius, kCircleSegments));
 
-        int numBalls = 10;
+        int numBalls = 1;
         vector<Ball> balls;
         balls.reserve(numBalls);
 
         for (size_t i = 0; i < numBalls; ++i) {
-            balls.push_back({posDist(gen), posDist(gen), velDist(gen), velDist(gen), kBallRadius});
+            balls.push_back({-0.5f, 0.3f, 0.6f, 0.4f, kBallRadius});
         }
 
         glClearColor(0.0f, 0.396f, 0.549f, 1.0f);
@@ -229,14 +176,6 @@ int main() {
             for (Ball& ball : balls) {
                 updateBall(ball, deltaTime);
                 resolveWallCollision(ball);
-            }
-
-            for (size_t i = 0; i < balls.size(); ++i) {
-                for (size_t j = i + 1; j < balls.size(); ++j) {
-                    if (checkBallCollision(balls[i], balls[j])) {
-                        resolveBallCollision(balls[i], balls[j]);
-                    }
-                }
             }
 
             glClear(GL_COLOR_BUFFER_BIT);
