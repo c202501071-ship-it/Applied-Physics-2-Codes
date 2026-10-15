@@ -155,6 +155,11 @@ void applyStick(std::vector<Point>& points, const Stick& stick) {
     b.posY -= dir.y * error * wB;
 }
 
+void resolveFloor(Point& point) {
+    if (point.posY - kPointRadius < -1.0f)
+        point.posY = -1.0f + kPointRadius;
+}
+
 } // namespace
 
 int main() {
@@ -191,8 +196,6 @@ int main() {
             {2, 9, distance(points[2], points[9])}, {9, 10, distance(points[9], points[10])},
         };
 
-        points[0].pinned = true;
-
         glClearColor(0.0f, 0.396f, 0.549f, 1.0f);
 
         while (!window.shouldClose()) {
@@ -206,6 +209,10 @@ int main() {
                 for (const Stick& stick : sticks) {
                     applyStick(points, stick);
                 }
+            }
+
+            for (Point& point : points) {
+                resolveFloor(point);
             }
 
             glClear(GL_COLOR_BUFFER_BIT);
