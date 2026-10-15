@@ -156,6 +156,41 @@ bool checkBallCollision(const Ball&a, const Ball& b) {
     return distance < (a.radius + b.radius);
 }
 
+Vec2 computeCollisionNormal(const Ball& a, const Ball& b, float& outDistance) {
+    float dx = b.posX - a.posX;
+    float dy = b.posY - a.posY;
+    outDistance = sqrt(dx * dx + dy * dy);
+    return { dx / outDistance, dy / outDistance };
+}
+
+void exchangeNormalVelocity(Ball& a, Ball& b, const Vec2& normal) {
+    float dotA = a.velX * normal.x + a.velY * normal.y;
+    float dotB = b.velX * normal.x + b.velY * normal.y;
+
+    a.velX += (dotB - dotA) * normal.x;
+    a.velY += (dotB - dotA) * normal.y;
+    b.velX += (dotA - dotB) * normal.x;
+    b.velY += (dotA - dotB) * normal.y;
+}
+
+void correctPenetration(Ball& a, Ball& b, const Vec2& normal, float distance) {
+    float overlap = (a.radius + b.radius) - distance;
+    float pushEach = overlap / 2.0f;
+
+    a.posX -= normal.x * pushEach;
+    a.posY -= normal.y * pushEach;
+    b.posX += normal.x * pushEach;
+    b.posY += normal.y * pushEach;
+}
+
+void resolveBallCollision(Ball& a, Ball& b) {
+    float distance;
+    Vec2 normal = computeCollisionNormal(a, b, distance);
+
+    exchangeNormalVelocity(a, b, normal);
+    correctPenetration(a, b, normal, distance);
+}
+
 } // namespace
 
 int main() {
@@ -188,7 +223,7 @@ int main() {
             for (size_t i = 0; i < balls.size(); ++i) {
                 for (size_t j = i + 1; j < balls.size(); ++j) {
                     if (checkBallCollision(balls[i], balls[j])) {
-                        std::cout << "balls " << i << " and " << j << " are touching\n";
+                        resolveBallCollision(balls[i], balls[j]);
                     }
                 }
             }
