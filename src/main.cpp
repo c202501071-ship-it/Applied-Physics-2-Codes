@@ -27,6 +27,11 @@ struct Point {
     float posX, posY, prevX, prevY;
 };
 
+struct Stick {
+    int a, b;
+    float restLength;
+};
+
 struct Vec2 {
     float x, y;
 };
@@ -114,12 +119,31 @@ void uploadDynamic(GLuint vbo, const vector<float>& data) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
+float distance(const Point& a, const Point& b) {
+    float dx = b.posX - a.posX;
+    float dy = b.posY - a.posY;
+    return sqrtf(dx * dx + dy * dy);
+}
+
 void updatePoint(Point& point, float dt) {
     float oldX = point.posX, oldY = point.posY;
     point.posX += point.posX - point.prevX;
     point.posY += point.posY - point.prevY + kGravity * dt * dt;
     point.prevX = oldX;
     point.prevY = oldY;
+}
+
+void applyStick(std::vector<Point>& points, const Stick& stick) {
+    Point& a = points[stick.a];
+    Point& b = points[stick.b];
+    float dist = distance(a, b);
+    if (dist < 1e-6f) return;
+    float error = dist - stick.restLength;
+    Vec2 dir = {(b.posX - a.posX) / dist, (b.posY - a.posY) / dist};
+    a.posX += dir.x * error * 0.5f;
+    a.posY += dir.y * error * 0.5f;
+    b.posX -= dir.x * error * 0.5f;
+    b.posY -= dir.y * error * 0.5f;
 }
 
 } // namespace
@@ -135,8 +159,17 @@ int main() {
         GLuint circleVbo = 0;
         GLuint circleVao = createDynamicVao(circleVbo);
         GLsizei circleVertexCount = static_cast<GLsizei>(circleVerts.size() / 2);
+        GLuint lineVbo = 0;
+        GLuint lineVao = createDynamicVao(lineVbo);
 
-        vector<Point> points = {{0.0f, 0.8f, 0.0f, 0.8f}};
+        vector<Point> points = {
+            {-0.1f, 0.8f, -0.1f, 0.8f},
+            {0.2f, 0.7f, 0.19f, 0.7f},
+        };
+
+        std::vector<Stick> sticks = {
+            {0, 1, distance(points[0], points[1])},
+        };
 
         glClearColor(0.0f, 0.396f, 0.549f, 1.0f);
 
@@ -147,8 +180,24 @@ int main() {
                 updatePoint(point, kDt);
             }
 
+            for (const Stick& stick : sticks) {
+                applyStick(points, stick);
+            }
+
             glClear(GL_COLOR_BUFFER_BIT);
             glUseProgram(program);
+
+            vector<float> lineVerts;
+            for (const Stick& stick : sticks) {
+                lineVerts.push_back(points[stick.a].posX);
+                lineVerts.push_back(points[stick.a].posY);
+                lineVerts.push_back(points[stick.b].posX);
+                lineVerts.push_back(points[stick.b].posY);
+            }
+            uploadDynamic(lineVbo, lineVerts);
+            glUniform4f(colorLoc, 0.31f, 0.76f, 0.97f, 1.0f);
+            glBindVertexArray(lineVao);
+            glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(lineVerts.size() / 2));
 
             glUniform4f(colorLoc, 0.85f, 0.85f, 0.9f, 1.0f);
             glBindVertexArray(circleVao);
@@ -168,6 +217,8 @@ int main() {
 
         glDeleteVertexArrays(1, &circleVao);
         glDeleteBuffers(1, &circleVbo);
+        glDeleteVertexArrays(1, &lineVao);
+        glDeleteBuffers(1, &lineVbo);
         glDeleteProgram(program);
     } catch (const exception& e) {
         cerr << e.what() << '\n';
