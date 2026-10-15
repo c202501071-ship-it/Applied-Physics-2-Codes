@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <random>
 
 #include "core/glfw_context.h"
 #include "core/input.h"
@@ -194,16 +195,26 @@ void resolveBallCollision(Ball& a, Ball& b) {
 } // namespace
 
 int main() {
+    random_device rd;
+    mt19937 gen(rd());
+
+    uniform_real_distribution<float> posDist(-1.0f, 1.0f);
+    uniform_real_distribution<float> velDist(-1.0f, 1.0f);
+
     try {
         gfx::GlfwContext glfw;
         gfx::Window window({.width = 600, .height = 600, .title = "Billiards Sim"});
 
         GLuint program = createProgram(kVertexShaderSource, kFragmentShaderSource);
         CircleMesh mesh = createCircleMesh(generateCircleVertices(kBallRadius, kCircleSegments));
-        vector<Ball> balls = {
-            {-0.5f, 0.3f, 0.6f, 0.4f, kBallRadius},
-            {0.4f, 0.2f, -0.5f, 0.3f, kBallRadius},
-        };
+
+        int numBalls = 10;
+        vector<Ball> balls;
+        balls.reserve(numBalls);
+
+        for (size_t i = 0; i < numBalls; ++i) {
+            balls.push_back({posDist(gen), posDist(gen), velDist(gen), velDist(gen), kBallRadius});
+        }
 
         glClearColor(0.0f, 0.396f, 0.549f, 1.0f);
 
