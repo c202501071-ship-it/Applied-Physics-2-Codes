@@ -25,6 +25,7 @@ constexpr float kDt = 1.0f / 60.0f;
 
 struct Point {
     float posX, posY, prevX, prevY;
+    bool pinned = false;
 };
 
 struct Stick {
@@ -126,6 +127,7 @@ float distance(const Point& a, const Point& b) {
 }
 
 void updatePoint(Point& point, float dt) {
+    if (point.pinned) return;
     float oldX = point.posX, oldY = point.posY;
     point.posX += point.posX - point.prevX;
     point.posY += point.posY - point.prevY + kGravity * dt * dt;
@@ -140,10 +142,12 @@ void applyStick(std::vector<Point>& points, const Stick& stick) {
     if (dist < 1e-6f) return;
     float error = dist - stick.restLength;
     Vec2 dir = {(b.posX - a.posX) / dist, (b.posY - a.posY) / dist};
-    a.posX += dir.x * error * 0.5f;
-    a.posY += dir.y * error * 0.5f;
-    b.posX -= dir.x * error * 0.5f;
-    b.posY -= dir.y * error * 0.5f;
+    float wA = a.pinned ? 0.0f : (b.pinned ? 1.0f : 0.5f);
+    float wB = b.pinned ? 0.0f : (a.pinned ? 1.0f : 0.5f);
+    a.posX += dir.x * error * wA;
+    a.posY += dir.y * error * wA;
+    b.posX -= dir.x * error * wB;
+    b.posY -= dir.y * error * wB;
 }
 
 } // namespace
@@ -163,13 +167,27 @@ int main() {
         GLuint lineVao = createDynamicVao(lineVbo);
 
         vector<Point> points = {
-            {-0.1f, 0.8f, -0.1f, 0.8f},
-            {0.2f, 0.7f, 0.19f, 0.7f},
+            {-0.35f, 0.8f, -0.35f, 0.8f},
+            {-0.25f, 0.8f, -0.25f, 0.8f},
+            {-0.15f, 0.8f, -0.15f, 0.8f},
+            {-0.05f, 0.8f, -0.05f, 0.8f},
+            {0.05f, 0.8f, 0.05f, 0.8f},
+            {0.15f, 0.8f, 0.15f, 0.8f},
+            {0.25f, 0.8f, 0.25f, 0.8f},
+            {0.35f, 0.8f, 0.35f, 0.8f},
         };
 
         std::vector<Stick> sticks = {
             {0, 1, distance(points[0], points[1])},
+            {1, 2, distance(points[1], points[2])},
+            {2, 3, distance(points[2], points[3])},
+            {3, 4, distance(points[3], points[4])},
+            {4, 5, distance(points[4], points[5])},
+            {5, 6, distance(points[5], points[6])},
+            {6, 7, distance(points[6], points[7])},
         };
+
+        points[0].pinned = true;
 
         glClearColor(0.0f, 0.396f, 0.549f, 1.0f);
 
