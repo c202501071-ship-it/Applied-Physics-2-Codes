@@ -1,5 +1,4 @@
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
 
 #include <cstdlib>
 #include <exception>
@@ -13,6 +12,8 @@
 #include "core/input.h"
 #include "core/window.h"
 
+using namespace std;
+
 namespace {
 
 constexpr float kBallRadius = 0.1f;
@@ -23,10 +24,6 @@ struct Ball {
     float posX, posY;
     float velX, velY;
     float radius;
-};
-
-struct Vec2 {
-    float x, y;
 };
 
 constexpr const char* kVertexShaderSource = R"(#version 330 core
@@ -51,7 +48,7 @@ GLuint compileShader(GLenum type, const char* source) {
         char log[512];
         glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
         glDeleteShader(shader);
-        throw std::runtime_error(std::string("Shader compilation failed: ") + log);
+        throw runtime_error(string("Shader compilation failed: ") + log);
     }
     return shader;
 }
@@ -73,13 +70,13 @@ GLuint createProgram(const char* vertexSource, const char* fragmentSource) {
         char log[512];
         glGetProgramInfoLog(program, sizeof(log), nullptr, log);
         glDeleteProgram(program);
-        throw std::runtime_error(std::string("Program linking failed: ") + log);
+        throw runtime_error(string("Program linking failed: ") + log);
     }
     return program;
 }
 
-std::vector<float> generateCircleVertices(float radius, int segments) {
-    std::vector<float> vertices;
+vector<float> generateCircleVertices(float radius, int segments) {
+    vector<float> vertices;
     vertices.push_back(0.0f);
     vertices.push_back(0.0f);
 
@@ -97,7 +94,7 @@ struct CircleMesh {
     GLsizei vertexCount = 0;
 };
 
-CircleMesh createCircleMesh(const std::vector<float>& vertices) {
+CircleMesh createCircleMesh(const vector<float>& vertices) {
     CircleMesh mesh;
     mesh.vertexCount = static_cast<GLsizei>(vertices.size() / 2);
 
@@ -123,72 +120,6 @@ void drawBall(GLuint program, const CircleMesh& mesh, const Ball& ball) {
     glDrawArrays(GL_TRIANGLE_FAN, 0, mesh.vertexCount);
 }
 
-void updateBall(Ball& ball, float deltaTime) {
-    ball.posX += ball.velX * deltaTime;
-    ball.posY += ball.velY * deltaTime;
-}
-
-void resolveWallCollision(Ball& ball) {
-    if (ball.posX - ball.radius < -1.0f) {
-        ball.posX = -1.0f + ball.radius;
-        ball.velX = -ball.velX;
-    }
-    if (ball.posX + ball.radius > 1.0f) {
-        ball.posX = 1.0f - ball.radius;
-        ball.velX = -ball.velX;
-    }
-    if (ball.posY - ball.radius < -1.0f) {
-        ball.posY = -1.0f + ball.radius;
-        ball.velY = -ball.velY;
-    }
-    if (ball.posY + ball.radius > 1.0f) {
-        ball.posY = 1.0f - ball.radius;
-        ball.velY = -ball.velY;
-    }
-}
-
-bool checkBallCollision(const Ball&a, const Ball& b) {
-    float dx = b.posX - a.posX;
-    float dy = b.posY - a.posY;
-    float distance = sqrt(dx * dx + dy * dy);
-    return distance < (a.radius + b.radius);
-}
-
-Vec2 computeCollisionNormal(const Ball& a, const Ball& b, float& outDistance) {
-    float dx = b.posX - a.posX;
-    float dy = b.posY - a.posY;
-    outDistance = sqrt(dx * dx + dy * dy);
-    return { dx / outDistance, dy / outDistance };
-}
-
-void exchangeNormalVelocity(Ball& a, Ball& b, const Vec2& normal) {
-    float dotA = a.velX * normal.x + a.velY * normal.y;
-    float dotB = b.velX * normal.x + b.velY * normal.y;
-
-    a.velX += (dotB - dotA) * normal.x;
-    a.velY += (dotB - dotA) * normal.y;
-    b.velX += (dotA - dotB) * normal.x;
-    b.velY += (dotA - dotB) * normal.y;
-}
-
-void correctPenetration(Ball& a, Ball& b, const Vec2& normal, float distance) {
-    float overlap = (a.radius + b.radius) - distance;
-    float pushEach = overlap / 2.0f;
-
-    a.posX -= normal.x * pushEach;
-    a.posY -= normal.y * pushEach;
-    b.posX += normal.x * pushEach;
-    b.posY += normal.y * pushEach;
-}
-
-void resolveBallCollision(Ball& a, Ball& b) {
-    float distance;
-    Vec2 normal = computeCollisionNormal(a, b, distance);
-
-    exchangeNormalVelocity(a, b, normal);
-    correctPenetration(a, b, normal, distance);
-}
-
 } // namespace
 
 int main() {
@@ -198,39 +129,15 @@ int main() {
 
         GLuint program = createProgram(kVertexShaderSource, kFragmentShaderSource);
         CircleMesh mesh = createCircleMesh(generateCircleVertices(kBallRadius, kCircleSegments));
-        std::vector<Ball> balls = {
-            {-0.5f, 0.3f, 0.6f, 0.4f, kBallRadius},
-            {0.4f, 0.2f, -0.5f, 0.3f, kBallRadius},
-        };
+        Ball ball = {0.0f, 0.0f, 0.0f, 0.0f, kBallRadius};
 
         glClearColor(0.04f, 0.42f, 0.24f, 1.0f);
 
-        float lastFrameTime = static_cast<float>(glfwGetTime());
-
         while (!window.shouldClose()) {
-            float currentFrameTime = static_cast<float>(glfwGetTime());
-            float deltaTime = currentFrameTime - lastFrameTime;
-            lastFrameTime = currentFrameTime;
-
             gfx::processInput(window);
 
-            for (Ball& ball : balls) {
-                updateBall(ball, deltaTime);
-                resolveWallCollision(ball);
-            }
-
-            for (size_t i = 0; i < balls.size(); ++i) {
-                for (size_t j = i + 1; j < balls.size(); ++j) {
-                    if (checkBallCollision(balls[i], balls[j])) {
-                        resolveBallCollision(balls[i], balls[j]);
-                    }
-                }
-            }
-
             glClear(GL_COLOR_BUFFER_BIT);
-            for (const Ball& ball : balls) {
-                drawBall(program, mesh, ball);
-            }
+            drawBall(program, mesh, ball);
 
             window.swapBuffers();
             window.pollEvents();
@@ -239,8 +146,8 @@ int main() {
         glDeleteVertexArrays(1, &mesh.vao);
         glDeleteBuffers(1, &mesh.vbo);
         glDeleteProgram(program);
-    } catch (const std::exception& e) {
-        std::cerr << e.what() << '\n';
+    } catch (const exception& e) {
+        cerr << e.what() << '\n';
         return EXIT_FAILURE;
     }
 
