@@ -7,7 +7,10 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_library(glad STATIC ../../opengl-cpp-setup/src/glad.c)
 
-file(GLOB EXPERIMENT_FILES "src/*.cpp")
+file(GLOB EXPERIMENT_FILES
+        "src/*.cpp"
+        "assessment/*/*.cpp"
+)
 
 foreach(FILE_PATH ${EXPERIMENT_FILES})
     get_filename_component(EXE_NAME ${FILE_PATH} NAME_WE)
