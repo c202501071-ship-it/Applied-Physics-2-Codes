@@ -17,22 +17,21 @@ using namespace std;
 
 namespace {
 
-constexpr float kBallRadius = 0.1f;
 constexpr int kCircleSegments = 40;
 constexpr float kPi = 3.14159265358979323846f;
+constexpr float kPointRadius = 0.03f;
+constexpr float kRestitution = 0.4f;
 constexpr float kGravity = -1.8f;
 
-struct Ball {
+struct PointMass {
     float posX, posY;
     float velX, velY;
-    float radius;
-    float restitution;
+    float mass;
 };
 
 constexpr const char* kVertexShaderSource = R"(#version 330 core
 layout (location = 0) in vec2 aPos;
-uniform vec2 uCenter;
-void main() { gl_Position = vec4(aPos + uCenter, 0.0, 1.0); }
+void main() { gl_Position = vec4(aPos, 0.0, 1.0); }
 )";
 
 constexpr const char* kFragmentShaderSource = R"(#version 330 core
@@ -91,63 +90,52 @@ vector<float> generateCircleVertices(float radius, int segments) {
     return vertices;
 }
 
-struct CircleMesh {
+GLuint createDynamicVao(GLuint& vbo) {
     GLuint vao = 0;
-    GLuint vbo = 0;
-    GLsizei vertexCount = 0;
-};
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
 
-CircleMesh createCircleMesh(const vector<float>& vertices) {
-    CircleMesh mesh;
-    mesh.vertexCount = static_cast<GLsizei>(vertices.size() / 2);
-
-    glGenVertexArrays(1, &mesh.vao);
-    glGenBuffers(1, &mesh.vbo);
-
-    glBindVertexArray(mesh.vao);
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(),
-                 GL_STATIC_DRAW);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
     glEnableVertexAttribArray(0);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-    return mesh;
+    return vao;
 }
 
-void drawBall(GLuint program, const CircleMesh& mesh, const Ball& ball) {
-    glUseProgram(program);
-    glUniform2f(glGetUniformLocation(program, "uCenter"), ball.posX, ball.posY);
-    glBindVertexArray(mesh.vao);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, mesh.vertexCount);
+void uploadDynamic(GLuint vbo, const std::vector<float>& data) {
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void applyGravity(Ball& ball, float deltaTime) {
-    ball.velY += kGravity * deltaTime;
+void applyGravity(PointMass& point, float deltaTime) {
+    point.velY += kGravity * deltaTime;
 }
 
-void updateBall(Ball& ball, float deltaTime) {
-    ball.posX += ball.velX * deltaTime;
-    ball.posY += ball.velY * deltaTime;
+void updatePoint(PointMass& point, float deltaTime) {
+    point.posX += point.velX * deltaTime;
+    point.posY += point.velY * deltaTime;
 }
 
-void resolveWallCollision(Ball& ball) {
-    if (ball.posX - ball.radius < -1.0f) {
-        ball.posX = -1.0f + ball.radius;
-        ball.velX = -ball.velX;
+void resolveWallCollision(PointMass& point) {
+    if (point.posX - kPointRadius < -1.0f) {
+        point.posX = -1.0f + kPointRadius;
+        point.velX = -point.velX;
     }
-    if (ball.posX + ball.radius > 1.0f) {
-        ball.posX = 1.0f - ball.radius;
-        ball.velX = -ball.velX;
+    if (point.posX + kPointRadius > 1.0f) {
+        point.posX = 1.0f - kPointRadius;
+        point.velX = -point.velX;
     }
-    if (ball.posY - ball.radius < -1.0f) {
-        ball.posY = -1.0f + ball.radius;
-        ball.velY = -ball.velY * ball.restitution;
+    if (point.posY - kPointRadius < -1.0f) {
+        point.posY = -1.0f + kPointRadius;
+        point.velY = -point.velY * kRestitution;
     }
-    if (ball.posY + ball.radius > 1.0f) {
-        ball.posY = 1.0f - ball.radius;
-        ball.velY = -ball.velY;
+    if (point.posY + kPointRadius > 1.0f) {
+        point.posY = 1.0f - kPointRadius;
+        point.velY = -point.velY;
     }
 }
 
@@ -159,15 +147,14 @@ int main() {
         gfx::Window window({.width = 600, .height = 600, .title = "Billiards Sim"});
 
         GLuint program = createProgram(kVertexShaderSource, kFragmentShaderSource);
-        CircleMesh mesh = createCircleMesh(generateCircleVertices(kBallRadius, kCircleSegments));
+        vector<float> circleVerts = generateCircleVertices(kPointRadius, kCircleSegments);
+        GLuint circleVbo = 0;
+        GLuint circleVao = createDynamicVao(circleVbo);
+        GLsizei circleVertexCount = static_cast<GLsizei>(circleVerts.size() / 2);
 
-        int numBalls = 1;
-        vector<Ball> balls;
-        balls.reserve(numBalls);
-
-        for (size_t i = 0; i < numBalls; ++i) {
-            balls.push_back({-0.5f, 0.3f, 0.6f, 0.4f, kBallRadius, 0.75f});
-        }
+        vector<PointMass> points = {
+            {0.0f, 0.6f, 0.0f, 0.0f, 1.0f},
+        };
 
         glClearColor(0.0f, 0.396f, 0.549f, 1.0f);
 
@@ -179,23 +166,31 @@ int main() {
             lastFrameTime = currentFrameTime;
             gfx::processInput(window);
 
-            for (Ball& ball : balls) {
-                applyGravity(ball, deltaTime);
-                updateBall(ball, deltaTime);
-                resolveWallCollision(ball);
+            for (PointMass& point : points) {
+                applyGravity(point, deltaTime);
+                updatePoint(point, deltaTime);
+                resolveWallCollision(point);
             }
 
             glClear(GL_COLOR_BUFFER_BIT);
-            for (const Ball& ball : balls) {
-                drawBall(program, mesh, ball);
+            glUseProgram(program);
+            glBindVertexArray(circleVao);
+            for (const PointMass& point : points) {
+                std::vector<float> translated = circleVerts;
+                for (size_t i = 0; i < translated.size(); i += 2) {
+                    translated[i] += point.posX;
+                    translated[i + 1] += point.posY;
+                }
+                uploadDynamic(circleVbo, translated);
+                glDrawArrays(GL_TRIANGLE_FAN, 0, circleVertexCount);
             }
 
             window.swapBuffers();
             window.pollEvents();
         }
 
-        glDeleteVertexArrays(1, &mesh.vao);
-        glDeleteBuffers(1, &mesh.vbo);
+        glDeleteVertexArrays(1, &circleVao);
+        glDeleteBuffers(1, &circleVbo);
         glDeleteProgram(program);
     } catch (const exception& e) {
         cerr << e.what() << '\n';
