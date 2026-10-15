@@ -154,9 +154,12 @@ int main() {
 
         GLuint program = createProgram(kVertexShaderSource, kFragmentShaderSource);
         CircleMesh mesh = createCircleMesh(generateCircleVertices(kBallRadius, kCircleSegments));
-        Ball ball = {0.0f, 0.0f, 0.6f, 0.4f, kBallRadius};
+        vector<Ball> balls = {
+            {-0.5f, 0.3f, 0.6f, 0.4f, kBallRadius},
+            {0.4f, 0.2f, -0.5f, 0.3f, kBallRadius},
+        };
 
-        glClearColor(0.04f, 0.42f, 0.24f, 1.0f);
+        glClearColor(0.0f, 0.396f, 0.549f, 1.0f);
 
         float lastFrameTime = static_cast<float>(glfwGetTime());
 
@@ -166,10 +169,14 @@ int main() {
             lastFrameTime = currentFrameTime;
             gfx::processInput(window);
 
-            updateBall(ball, deltaTime);
-            resolveWallCollision(ball);
+            for (Ball& ball : balls) {
+                updateBall(ball, deltaTime);
+                resolveWallCollision(ball);
+            }
             glClear(GL_COLOR_BUFFER_BIT);
-            drawBall(program, mesh, ball);
+            for (const Ball& ball : balls) {
+                drawBall(program, mesh, ball);
+            }
 
             window.swapBuffers();
             window.pollEvents();
