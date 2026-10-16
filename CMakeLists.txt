@@ -10,6 +10,7 @@ add_library(glad STATIC ../../opengl-cpp-setup/src/glad.c)
 file(GLOB EXPERIMENT_FILES
         "src/*.cpp"
         "assessment/*/*.cpp"
+        "midterm exam/*.cpp"
 )
 
 foreach(FILE_PATH ${EXPERIMENT_FILES})

@@ -1,4 +1,3 @@
-// NAME IS unit.cpp BECAUSE IDE REFUSES TO RUN THIS CODE IF IT IS NAMED main.cpp
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -15,6 +14,10 @@
 #include "core/window.h"
 
 using namespace std;
+
+struct Vec2 {
+    float x, y;
+};
 
 struct Ball {
     float x;
@@ -142,6 +145,13 @@ vector<float> getTranslatedCircle(const vector<float>& baseCircle, float cx, flo
     return translated;
 }
 
+bool checkBallCollision(const Ball&a, const Ball& b) {
+    float dx = b.x - a.x;
+    float dy = b.y - a.y;
+    float distance = sqrt(dx * dx + dy * dy);
+    return distance < (kBallRadius + kBallRadius);
+}
+
 } // namespace
 
 int main() {
@@ -217,6 +227,15 @@ int main() {
                 if (ball.y - kBallRadius < -1.0f) {
                     ball.velY = -ball.velY;
                     ball.y = -1.0f + kBallRadius;
+                }
+            }
+
+            // --- Step 5: Ball-vs-Ball Collision Handling ---
+            for (size_t i = 0; i < g_Balls.size(); ++i) {
+                for (size_t j = i + 1; j < g_Balls.size(); ++j) {
+                    if (checkBallCollision(g_Balls[i], g_Balls[j])) {
+                        std::cout << "balls " << i << " and " << j << " are touching\n";
+                    }
                 }
             }
 
