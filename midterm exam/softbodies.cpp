@@ -30,7 +30,7 @@ constexpr int kChainCount = 5;                 // indices 0..4
 constexpr int kHubIndex = kChainCount;         // index 5
 constexpr int kRimStart = kChainCount + 1;     // indices 6..13
 constexpr int kRimCount = 5;
-constexpr int kPointTotal = kChainCount + 1 + kRimCount;  // 14
+constexpr int kPointTotal = kChainCount + 1 + kRimCount;  // 11
 constexpr float kWheelRadius = 0.15f;
 
 struct Point {
@@ -195,7 +195,7 @@ Point* nearestWheelPoint(vector<Point>& points, float x, float y) {
 int main() {
     try {
         gfx::GlfwContext glfw;
-        gfx::Window window({.width = 600, .height = 600, .title = "Unit II - Villacastin"});
+        gfx::Window window({.width = 600, .height = 600, .title = "Midterm Part 2 - Villacastin"});
 
         GLuint program = createProgram(kVertexShaderSource, kFragmentShaderSource);
         GLint colorLoc = glGetUniformLocation(program, "uColor");
@@ -215,7 +215,7 @@ int main() {
         const float hubX = 0.5f, hubY = 0.2f;
         points.push_back(makePoint(hubX, hubY));
         for (int i = 0; i < kRimCount; ++i) {
-            float angle = static_cast<float>(i) * 45.0f * kPi / 180.0f;
+            float angle = static_cast<float>(i) * 72.0f * kPi / 180.0f;
             points.push_back(makePoint(hubX + kWheelRadius * cosf(angle),
                                        hubY + kWheelRadius * sinf(angle)));
         }
