@@ -30,7 +30,7 @@ constexpr int kChainCount = 5;                 // indices 0..4
 constexpr int kHubIndex = kChainCount;         // index 5
 constexpr int kRimStart = kChainCount + 1;     // indices 6..13
 constexpr int kRimCount = 5;
-constexpr int kPointTotal = kChainCount + 1 + kRimCount;  // 11
+constexpr int kPointTotal = kChainCount + 1 + kRimCount;
 constexpr float kWheelRadius = 0.15f;
 
 struct Point {
@@ -238,7 +238,7 @@ int main() {
 
         Point* dragged = nullptr;
 
-        glClearColor(0.20f, 0.10f, 0.35f, 1.0f);
+        glClearColor(0.05f, 0.35f, 0.15f, 1.0f);
 
         while (!window.shouldClose()) {
             gfx::processInput(window);
