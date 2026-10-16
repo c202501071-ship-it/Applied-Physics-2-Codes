@@ -152,12 +152,47 @@ bool checkBallCollision(const Ball&a, const Ball& b) {
     return distance < (kBallRadius + kBallRadius);
 }
 
+Vec2 computeCollisionNormal(const Ball& a, const Ball& b, float& outDistance) {
+    float dx = b.x - a.x;
+    float dy = b.y - a.y;
+    outDistance = sqrt(dx * dx + dy * dy);
+    return { dx / outDistance, dy / outDistance };
+}
+
+void exchangeNormalVelocity(Ball& a, Ball& b, const Vec2& normal) {
+    float dotA = a.velX * normal.x + a.velY * normal.y;
+    float dotB = b.velX * normal.x + b.velY * normal.y;
+
+    a.velX += (dotB - dotA) * normal.x;
+    a.velY += (dotB - dotA) * normal.y;
+    b.velX += (dotA - dotB) * normal.x;
+    b.velY += (dotA - dotB) * normal.y;
+}
+
+void correctPenetration(Ball& a, Ball& b, const Vec2& normal, float distance) {
+    float overlap = (kBallRadius + kBallRadius) - distance;
+    float pushEach = overlap / 2.0f;
+
+    a.x -= normal.x * pushEach;
+    a.y -= normal.y * pushEach;
+    b.y += normal.x * pushEach;
+    b.y += normal.y * pushEach;
+}
+
+void resolveBallCollision(Ball& a, Ball& b) {
+    float distance;
+    Vec2 normal = computeCollisionNormal(a, b, distance);
+
+    exchangeNormalVelocity(a, b, normal);
+    correctPenetration(a, b, normal, distance);
+}
+
 } // namespace
 
 int main() {
     try {
         gfx::GlfwContext glfw;
-        gfx::Window window({.width = 600, .height = 600, .title = "Unit I - Villacastin"});
+        gfx::Window window({.width = 600, .height = 600, .title = "Miderm Part 1 - Villacastin"});
 
         GLuint program = createProgram(kVertexShaderSource, kFragmentShaderSource);
         GLint colorLoc = glGetUniformLocation(program, "uColor");
@@ -234,7 +269,7 @@ int main() {
             for (size_t i = 0; i < g_Balls.size(); ++i) {
                 for (size_t j = i + 1; j < g_Balls.size(); ++j) {
                     if (checkBallCollision(g_Balls[i], g_Balls[j])) {
-                        std::cout << "balls " << i << " and " << j << " are touching\n";
+                        resolveBallCollision(g_Balls[i], g_Balls[j]);
                     }
                 }
             }
